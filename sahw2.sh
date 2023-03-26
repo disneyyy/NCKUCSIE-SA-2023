@@ -6,6 +6,30 @@ activate=0
 strfile="" # string of filenames
 strnum="" # string of hash number
 max=0
+md5hash(){
+    for (( i=2; i<=$max; i=i+1))
+    do
+        substrfile=$(echo $strfile | cut -d" " -f $i)
+        substrnum=$(echo $strnum | cut -d" " -f $i)
+        substrfile=$(md5sum $substrfile | cut -c 1-32)
+        if [ "$substrnum" != "$substrfile" ] ; then
+            echo -n -e "Error: Invalid checksum." 1>&2
+            exit 1 
+        fi
+    done
+}
+sha256hash(){
+    for (( i=2; i<=$max; i=i+1))
+    do
+        substrfile=$(echo $strfile | cut -d" " -f $i)
+        substrnum=$(echo $strnum | cut -d" " -f $i)
+        substrfile=$(sha256sum $substrfile | cut -c 1-64)
+        if [ "$substrnum" != "$substrfile" ] ; then
+            echo -n -e "Error: Invalid checksum." 1>&2
+            exit 1 
+        fi
+    done
+}
 if [ "$#" -eq 1 ] && [ "$1" = "-h" ] ; then
     echo -n -e "\nUsage: sahw2.sh {--sha256 hashes ... | --md5 hashes ...} -i files ...\n\n--sha256: SHA256 hashes to validate input files.\n--md5: MD5 hashes to validate input files.\n-i: Input files.\n"
     exit 0
@@ -34,27 +58,9 @@ elif [ "$1" = "--md5" ] || [ "$1" = "--sha256" ] ; then
         echo -n -e "Error: Invalid values." 1>&2
         exit 1
     elif [ "$1" = "--md5" ] ; then
-        for (( i=2; i<=$max; i=i+1))
-        do
-            substrfile=$(echo $strfile | cut -d" " -f $i)
-            substrnum=$(echo $strnum | cut -d" " -f $i)
-            substrfile=$(md5sum $substrfile | cut -c 1-32)
-            if [ "$substrnum" != "$substrfile" ] ; then
-                echo -n -e "Error: Invalid checksum." 1>&2
-                exit 1 
-            fi
-        done
+        md5hash
     elif [ "$1" = "--sha256" ] ; then
-        for (( i=2; i<=$max; i=i+1))
-        do
-            substrfile=$(echo $strfile | cut -d" " -f $i)
-            substrnum=$(echo $strnum | cut -d" " -f $i)
-            substrfile=$(sha256sum $substrfile | cut -c 1-64)
-            if [ "$substrnum" != "$substrfile" ] ; then
-                echo -n -e "Error: Invalid checksum." 1>&2
-                exit 1 
-            fi
-        done
+        sha256hash
     else
         echo -n -e "Error: Invalid checksum." 1>&2
         exit 1 
@@ -100,33 +106,9 @@ elif [ "$1" = "-i" ] ; then
         echo -n -e "Error: Invalid values." 1>&2
         exit 1
     elif [ "$pre" = "--md5" ] ; then
-        for (( i=2; i<=$max; i=i+1))
-        do
-            substrfile=$(echo $strfile | cut -d" " -f $i)
-            # echo $substrfile
-            substrnum=$(echo $strnum | cut -d" " -f $i)
-            # echo $substrnum
-            substrfile=$(md5sum $substrfile | cut -c 1-32)
-            # echo $substrfile
-            if [ "$substrnum" != "$substrfile" ] ; then
-                echo -n -e "Error: Invalid checksum." 1>&2
-                exit 1 
-            fi
-        done
+        md5hash
     elif [ "$pre" = "--sha256" ] ; then
-        for (( i=2; i<=$max; i=i+1))
-        do
-            substrfile=$(echo $strfile | cut -d" " -f $i)
-            # echo $substrfile
-            substrnum=$(echo $strnum | cut -d" " -f $i)
-            # echo $substrnum
-            substrfile=$(sha256sum $substrfile | cut -c 1-64)
-            # echo $substrfile
-            if [ "$substrnum" != "$substrfile" ] ; then
-                echo -n -e "Error: Invalid checksum." 1>&2
-                exit 1 
-            fi
-        done
+        sha256hash
     else
         echo -n -e "Error: Invalid checksum." 1>&2
         exit 1 
