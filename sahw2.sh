@@ -98,10 +98,6 @@ elif [ "$1" = "-i" ] ; then
             exit 1
         fi
     done
-    # echo $strfile
-    # echo $strnum
-    # echo $max
-    # echo $pre
     if [ "$hash_num" -ne 0 ] ; then
         echo -n -e "Error: Invalid values." 1>&2
         exit 1
@@ -118,6 +114,57 @@ else
     echo -n -e "Error: Invalid arguments." 1>&2
     exit 1
 fi
-echo -n -e "Error: Invalid file format." 1>&2
-exit 1
-# sha256sum $file | cut -c 1-64
+
+# parsing file
+factor=1
+type="NONE"
+str_usernames=""
+str_passwords=""
+str_shells=""
+str_groups=""
+for (( i=2; i<=$max; i=i+1)) ; do
+    file_name=$(echo $strfile | cut -d" " -f $i)
+    # echo "$file_name"
+    cat "$file_name" | jq -r ".[] | .username" > /dev/null 2>&1
+    last_result=$?
+    if [ $last_result -eq 0 ] ; then
+        type="JSON"
+        str_usernames="$str_usernames$(cat "$file_name" | jq -r ".[] | .username" | tr '\n' ' ')"
+        str_passwords="$str_passwords$(cat "$file_name" | jq -r ".[] | .password" | tr '\n' ' ')"
+        str_shells="$str_shells$(cat "$file_name" | jq -r ".[] | .shell" | tr '\n' ' ')"
+        str_groups="$str_groups$(cat "$file_name" | jq -r ".[] | .groups" | tr '\"' '\n' | tr -d "[ \n" | tr ']' '.' | tr ',' ' ')"
+    fi
+    if [ "$type" = "NONE" ] ; then
+        if [ "$(head -n 1 $file_name | cut -c 1-30)" = "username,password,shell,groups" ] ; then
+            type="CSV"
+        else
+            echo -n -e "Error: Invalid file format." 1>&2
+            exit 1
+        fi
+        while read line
+        do
+            # echo $line
+            if [ $factor -ne 1 ] ; then
+                str_usernames="$str_usernames$(echo $line | cut -d"," -f 1) "
+                str_passwords="$str_passwords$(echo $line | cut -d"," -f 2) "
+                str_shells="$str_shells$(echo $line | cut -d"," -f 3) "
+                if [ "$(echo $line | cut -d"," -f 4 | cut -c 1)" = " " ] ; then
+                    str_groups="$str_groups$(echo $line | cut -d"," -f 4 | cut -c 2-)."
+                else
+                    str_groups="$str_groups$(echo $line | cut -d"," -f 4)."
+                fi
+            fi
+            factor=$(($factor+1))
+        done < "$file_name"
+        # echo "$str_usernames"
+    fi
+    # echo "$type"
+    type="NONE"
+done
+echo -n -e "This script will create the following user(s): $str_usernames"
+echo -n -e "Do you want to continue? [y/n]:"
+# echo "$str_passwords"
+# echo "$str_shells"
+# echo "$str_groups"
+
+# max = filenum + 1
