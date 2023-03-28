@@ -183,6 +183,7 @@ do
 done
 user_num=$(($user_num-1))
 # echo "$user_num"
+# echo "$str_groups"
 j=1
 # add groups
 for (( i=1; i<=$user_num; i=i+1))
@@ -192,20 +193,23 @@ do
         temp_group2="$(echo "$temp_group" | cut -d" " -f 1)"
         if [ "$temp_group" = "$temp_group2" ] ; then
             # only 1 group
+            # echo "single add $temp_group"
             pw groupadd $temp_group > /dev/null 2>&1
         else
             temp_group2="$(echo "$temp_group" | cut -d" " -f 1)"
             while [ "$temp_group2" != "" ]
             do
+                # echo "multi add $temp_group2 from $temp_group"
                 pw groupadd $temp_group2 > /dev/null 2>&1
                 j=$(($j+1))
                 temp_group2="$(echo "$temp_group" | cut -d" " -f $j)"
             done
+            j=1
         fi
     fi
 done
 str_groups=$(echo "$str_groups" | tr ' ' ',')
-str_warning=""
+# str_warning=""
 # echo "$str_groups"
 for (( i=1; i<=$user_num; i=i+1))
 do
@@ -217,10 +221,11 @@ do
     temp_password="$(echo "$str_passwords" | cut -d" " -f $i)"
     temp_shell="$(echo "$str_shells" | cut -d" " -f $i)"
     temp_group="$(echo "$str_groups" | cut -d"." -f $i)"
-    command="pw useradd $temp_name"
-    # if [ "$temp_group" != "" ] ; then
-    #    command="$command -G $temp_group"
-    # fi
+    command="pw useradd $temp_name -w none -s $temp_shell"
+    if [ "$temp_group" != "" ] ; then
+       command="$command -G $temp_group"
+    fi
+    # echo $command
     $command > /dev/null 2>&1
     last_result=$?
     if [ "$last_result" -eq 0 ] ; then
