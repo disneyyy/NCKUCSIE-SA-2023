@@ -12,7 +12,7 @@ md5hash(){
         substrfile=$(echo $strfile | cut -d" " -f $i)
         substrnum=$(echo $strnum | cut -d" " -f $i)
         substrfile=$(md5sum $substrfile | cut -c 1-32)
-        if [ "$substrnum" != "$substrfile" ] ; then
+        if [ "$substrnum" != "$substrfile" ] && [ "$substrnum" != "]" ] ; then
             echo -n -e "Error: Invalid checksum." 1>&2
             exit 1 
         fi
@@ -24,7 +24,7 @@ sha256hash(){
         substrfile=$(echo $strfile | cut -d" " -f $i)
         substrnum=$(echo $strnum | cut -d" " -f $i)
         substrfile=$(sha256sum $substrfile | cut -c 1-64)
-        if [ "$substrnum" != "$substrfile" ] ; then
+        if [ "$substrnum" != "$substrfile" ]  && [ "$substrnum" != "]" ] ; then
             echo -n -e "Error: Invalid checksum." 1>&2
             exit 1 
         fi
@@ -122,6 +122,7 @@ str_usernames=""
 str_passwords=""
 str_shells=""
 str_groups=""
+user_num=1
 for (( i=2; i<=$max; i=i+1)) ; do
     file_name=$(echo $strfile | cut -d" " -f $i)
     # echo "$file_name"
@@ -163,8 +164,76 @@ for (( i=2; i<=$max; i=i+1)) ; do
 done
 echo -n -e "This script will create the following user(s): $str_usernames"
 echo -n -e "Do you want to continue? [y/n]:"
+read cont
+if [ "$cont" != "y" ] ; then
+    exit 0
+fi
+
 # echo "$str_passwords"
 # echo "$str_shells"
 # echo "$str_groups"
+# echo "$str_usernames"
+temp_name="$(echo "$str_usernames" | cut -d" " -f "$user_num")"
+# echo $temp_name
+while [ "$temp_name" != "" ]
+do
+    # echo "$user_num $temp_name"
+    user_num=$(($user_num+1))
+    temp_name="$(echo "$str_usernames" | cut -d" " -f "$user_num")"
+done
+user_num=$(($user_num-1))
+# echo "$user_num"
+j=1
+# add groups
+for (( i=1; i<=$user_num; i=i+1))
+do
+    temp_group="$(echo "$str_groups" | cut -d"." -f $i)"
+    if [ "$temp_group" != "" ] ; then
+        temp_group2="$(echo "$temp_group" | cut -d" " -f 1)"
+        if [ "$temp_group" = "$temp_group2" ] ; then
+            # only 1 group
+            pw groupadd $temp_group > /dev/null 2>&1
+        else
+            temp_group2="$(echo "$temp_group" | cut -d" " -f 1)"
+            while [ "$temp_group2" != "" ]
+            do
+                pw groupadd $temp_group2 > /dev/null 2>&1
+                j=$(($j+1))
+                temp_group2="$(echo "$temp_group" | cut -d" " -f $j)"
+            done
+        fi
+    fi
+done
+str_groups=$(echo "$str_groups" | tr ' ' ',')
+str_warning=""
+# echo "$str_groups"
+for (( i=1; i<=$user_num; i=i+1))
+do
+    # echo "$str_passwords"
+    # echo "$str_shells"
+    # echo "$str_groups"
+    # echo "$str_usernames"
+    temp_name="$(echo "$str_usernames" | cut -d" " -f $i)"
+    temp_password="$(echo "$str_passwords" | cut -d" " -f $i)"
+    temp_shell="$(echo "$str_shells" | cut -d" " -f $i)"
+    temp_group="$(echo "$str_groups" | cut -d"." -f $i)"
+    command="pw useradd $temp_name"
+    # if [ "$temp_group" != "" ] ; then
+    #    command="$command -G $temp_group"
+    # fi
+    $command > /dev/null 2>&1
+    last_result=$?
+    if [ "$last_result" -eq 0 ] ; then
+        # set password
+        echo "$temp_password" | pw usermod -n $temp_name -h 0  > /dev/null 2>&1
+    else
+        # str_warning="$str_warning$temp_name "
+        echo "Warning: user $temp_name already exists."
+    fi
+done
+# add users
+# if [ "$(echo "$str_groups" | cut -d"." -f 2 | cut -d " " -f 3)" = "" ] ; then
+#     echo "blank"
+# fi
 
 # max = filenum + 1
