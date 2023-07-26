@@ -1,0 +1,73 @@
+#!/bin/sh
+
+# PROVIDE: hw4
+# REQUIRE: DAEMON
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+. /etc/rc.conf
+
+name="hw4"
+rcvar="hw4"
+
+#command="/usr/home/disney/musical-potato/hw4_script.sh"  # Replace with the actual path to your hw4 script
+pidfile="/var/run/$name.pid"
+logfile="/var/log/$name.log"
+HOME="/usr/home/disney"
+app_dir="/usr/home/disney/musical-potato/api"
+poetry_exec="/usr/local/bin/poetry"
+python_exec="/usr/local/bin/python3"
+
+start_cmd="hw4_start"
+stop_cmd="hw4_stop"
+restart_cmd="hw4_restart"
+hw4_start(){
+	cd /usr/home/disney/musical-potato   
+	#/usr/local/bin/poetry run uvicorn app:APP --reload --host 0.0.0.0
+	cat /usr/home/disney/musical-potato/env-sample | head -14 > /usr/home/disney/musical-potato/.env
+	#cat /usr/home/disney/musical-potato/env-test
+	echo "NUM_DISKS=$NUM_DISKS" >> /usr/home/disney/musical-potato/.env
+	#cat /usr/home/disney/musical-potato/env-test
+	echo "MAX_SIZE=$MAX_SIZE" >> /usr/home/disney/musical-potato/.env
+	cat /usr/home/disney/musical-potato/.env > /usr/home/disney/musical-potato/env-sample
+	N=$NUM_DISKS
+	N=$(($N-1))
+	for i in $(seq 0 $N)
+	do
+		path="/var/raid/block-$i"
+		mkdir $path
+	done
+
+	cd api && /usr/sbin/daemon -P /var/run/hw4.pid /usr/local/bin/poetry run /usr/local/bin/uvicorn app:APP --reload --host 0.0.0.0 &   
+}
+hw4_restart(){
+	kill `cat /var/run/hw4.pid`
+	cat /usr/home/disney/musical-potato/env-sample | head -14 > /usr/home/disney/musical-potato/.env
+	echo "NUM_DISKS=$NUM_DISKS" >> /usr/home/disney/musical-potato/.env
+	echo "MAX_SIZE=$MAX_SIZE" >> /usr/home/disney/musical-potato/.env
+	cat /usr/home/disney/musical-potato/.env > /usr/home/disney/musical-potato/env-sample
+	N=$NUM_DISKS
+	N=$(($N-1))
+	rm -rf /var/raid/*
+	for i in $(seq 0 $N)
+	do
+		path="/var/raid/block-$i"
+		mkdir $path
+	done
+	cd /usr/home/disney/musical-potato
+	cd api && /usr/sbin/daemon -P /var/run/hw4.pid /usr/local/bin/poetry run /usr/local/bin/uvicorn app:APP --reload --host 0.0.0.0 &
+
+}
+hw4_stop(){
+	kill `cat /var/run/hw4.pid`
+}
+#command="/usr/local/bin/sh"
+#command_args="-c 'cd /usr/home/disney/musical-potato/api && /usr/local/bin/poetry run uvicorn app:APP --reload --host 0.0.0.0'"
+
+
+#command="/usr/sbin/daemon"
+#command_args="-c -f -P ${pidfile} -r /usr/local/bin/poetry run uvicorn app:APP --reload --host 0.0.0.0" # Add any necessary arguments here
+#command="/usr/local/bin/python3"
+load_rc_config hw4
+run_rc_command "$1"
+
